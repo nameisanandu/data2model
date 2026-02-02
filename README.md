@@ -52,9 +52,6 @@ automl\_web\_app/
 
 ## 📸 Screenshots
 
-### Index Page
-
-![Index](screenshots/index.jpeg)
 
 
 ### Dataset Upload
@@ -63,7 +60,7 @@ automl\_web\_app/
 
 
 ### Target Feature selection
-![Target Feature](screenshots/target selection.jpeg)
+![Target Feature](screenshots/target.jpeg)
 
 
 
@@ -73,11 +70,11 @@ automl\_web\_app/
 
 
 
-### Prediction Index
-![Prediction](screenshots/prediction index.jpeg)
+### Test Prediction
+![Prediction](screenshots/test.jpeg)
 
 ### Prediction Preview
-![Prediction](screenshots/prediction preview.jpeg)
+![Prediction](screenshots/prediction.jpeg)
 
 
 
