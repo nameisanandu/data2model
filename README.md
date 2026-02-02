@@ -101,15 +101,15 @@ cd data2model
 
 
 
-python -m venv venv
+python -m venv
 
-venv\\Scripts\\activate
+venv\Scripts\activate
 
 
 
 pip install -r requirements.txt
 
-cd automl\_project
+cd automl_project
 
 python manage.py migrate
 
