@@ -6,9 +6,9 @@
 
 
 
-# AutoML Django Web Application
+# data2model Django Web Application
 
-An end-to-end AutoML web application built with Django and scikit-learn.
+An end-to-end Auto ML web application built with Django and scikit-learn.
 The system automates data preprocessing, model training, evaluation, interpretability, and prediction for tabular datasets, providing a complete machine learning workflow through a web interface.
 
 ## Features
@@ -16,7 +16,7 @@ The system automates data preprocessing, model training, evaluation, interpretab
 * Upload CSV datasets
 * Automatic task detection (Classification / Regression)
 * Automated preprocessing (scaling, encoding, imputation)
-* AutoML model training and comparison
+* Auto ML model training and comparison
 * Best model selection
 * Confusion matrix and feature importance visualization
 * Column-level interpretability
@@ -38,7 +38,7 @@ The system automates data preprocessing, model training, evaluation, interpretab
 
 
 
-automl\_web\_app/
+data2model/
 
 │── automl\_project/
 
@@ -97,7 +97,7 @@ How to Run Locally
 
 git clone https://github.com/YOUR\_USERNAME/automl-django-app.git
 
-cd automl-django-app
+cd data2model
 
 
 
