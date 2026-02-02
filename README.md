@@ -8,10 +8,10 @@
 
 # AutoML Django Web Application
 
-An end-to-end AutoML web application built using Django and scikit-learn.  
-This project allows users to upload tabular CSV datasets, automatically train multiple machine learning models, compare performance, interpret results, and generate predictions.
+An end-to-end AutoML web application built with Django and scikit-learn.
+The system automates data preprocessing, model training, evaluation, interpretability, and prediction for tabular datasets, providing a complete machine learning workflow through a web interface.
 
-## 🚀 Features
+## Features
 
 * Upload CSV datasets
 * Automatic task detection (Classification / Regression)
@@ -24,7 +24,7 @@ This project allows users to upload tabular CSV datasets, automatically train mu
 * Download trained ML model (.pkl)
 * Model versioning and metadata
 
-## 🛠 Tech Stack
+## Tech Stack
 
 * Python
 * Django
@@ -32,7 +32,7 @@ This project allows users to upload tabular CSV datasets, automatically train mu
 * Pandas, NumPy
 * Matplotlib
 
-## 📂 Project Structure
+## Project Structure
 
 
 
@@ -55,7 +55,7 @@ automl\_web\_app/
 
 
 
-## 📸 Screenshots
+## Screenshots
 
 
 
