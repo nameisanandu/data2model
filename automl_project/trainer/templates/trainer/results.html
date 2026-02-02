@@ -1,0 +1,115 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AutoML Results</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<div class="container mt-4">
+
+    <!-- Header -->
+    <div class="card shadow p-3 mb-4">
+        <h3>📊 AutoML Results</h3>
+        <p class="text-muted">
+            Task Type:
+            <span class="badge bg-info text-dark">{{ task_type|upper }}</span>
+        </p>
+    </div>
+
+    <!-- Model Scores -->
+    <div class="card shadow p-3 mb-4">
+        <h5>Model Performance</h5>
+        <table class="table table-bordered mt-3">
+            <thead class="table-dark">
+                <tr>
+                    <th>Model</th>
+                    <th>Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for model, score in results.items %}
+                <tr>
+                    <td>{{ model }}</td>
+                    <td>{{ score }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <p>
+            🏆 <strong>Best Model:</strong>
+            <span class="badge bg-success">{{ best_model }}</span>
+        </p>
+    </div>
+
+    <div class="card mt-3 p-3">
+    <h6>Model Details</h6>
+    <ul class="mb-0">
+        <li><strong>Version:</strong> {{ model_meta.version }}</li>
+        <li><strong>Model:</strong> {{ model_meta.model_name }}</li>
+        <li><strong>Score:</strong> {{ model_meta.metric }}</li>
+        <li><strong>Trained on:</strong> {{ model_meta.trained_on }}</li>
+    </ul>
+</div>
+
+
+    <!-- Plots -->
+<div class="row">
+    <div class="col-md-4 mb-3">
+        <div class="card p-2">
+            <h6 class="text-center">Comparison</h6>
+            <img src="{% static acc_plot %}" class="img-fluid plot-img">
+        </div>
+    </div>
+
+    <div class="col-md-4 mb-3">
+        <div class="card p-2">
+            <h6 class="text-center">Confusion Matrix</h6>
+            <img src="{% static cm_plot %}" class="img-fluid plot-img">
+        </div>
+    </div>
+
+    <div class="col-md-4 mb-3">
+        <div class="card p-2">
+            <h6 class="text-center">Feature Importance</h6>
+            <img src="{% static fi_plot %}" class="img-fluid plot-img">
+        </div>
+    </div>
+</div>
+
+    </div>
+
+    <!-- Download -->
+    <div class="card shadow p-3 text-center">
+    <a href="/media/{{ model_path }}"
+    class="btn btn-primary"
+    download>
+    ⬇ Download Best Model
+    </a>
+
+
+
+    </div>
+
+</div>
+
+
+
+
+<div class="card shadow p-3 text-center mt-4">
+    <h5>🔮 Ready to Make Predictions?</h5>
+    <p class="text-muted">
+        Use the trained model to generate predictions on new data
+    </p>
+
+    <a href="{% url 'predict' %}" class="btn btn-success btn-lg">
+        Go to Prediction Page →
+    </a>
+</div>
+
+
+</body>
+</html>

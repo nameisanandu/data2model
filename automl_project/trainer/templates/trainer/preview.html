@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Select Target Column</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<div class="container mt-5">
+    <div class="card shadow p-4">
+        <h4>Select Target Column</h4>
+        <p class="text-muted">Choose the column you want to predict</p>
+
+        <form method="post" action="/train/">
+            {% csrf_token %}
+            <select name="target" class="form-select mb-3">
+                {% for col in columns %}
+                    <option value="{{ col }}">{{ col }}</option>
+                {% endfor %}
+            </select>
+
+            <button class="btn btn-success">Train Models</button>
+        </form>
+    </div>
+</div>
+
+</body>
+</html>
