@@ -11,8 +11,6 @@ Django==5.2.9
 ffmpeg==1.4
 flatbuffers==25.2.10
 fonttools==4.59.0
-jax==0.4.38
-jaxlib==0.4.38
 joblib==1.5.1
 kiwisolver==1.4.8
 matplotlib==3.10.3
@@ -58,3 +56,4 @@ pandas
 numpy
 scikit-learn
 matplotlib
+
