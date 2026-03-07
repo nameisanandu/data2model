@@ -1,0 +1,1 @@
+web: cd automl_project && gunicorn automl_project.wsgi
