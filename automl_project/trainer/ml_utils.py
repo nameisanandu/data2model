@@ -355,18 +355,38 @@ def train_models(csv_path, target):
     with open(full_model_path, "wb") as f:
         pickle.dump(best_model, f)
 
+    # write unversioned "current" copy used by prediction endpoint
+    unversioned_path = os.path.join("media", "models", "best_model.pkl")
+    with open(unversioned_path, "wb") as f:
+        pickle.dump(best_model, f)
+
 
 
 
 # Save model metadata
 # --------------------
+    # capture feature types so the prediction form can render appropriate
+    # input fields later.  We convert dtype objects to strings for
+    # serialization.  Also record the set of unique values for categorical
+    # (object) columns so the manual entry form can render dropdowns.
+    feature_types = {col: str(X[col].dtype) for col in X.columns}
+    feature_categories = {}
+    for col in X.columns:
+        if X[col].dtype == "object":
+            # Convert to list so JSON serializable; sort for deterministic order
+            feature_categories[col] = sorted(
+                pd.Series(X[col].dropna().unique()).astype(str).tolist()
+            )
+
     model_metadata = {
         "version": version,
         "model_name": best_model_name,
         "task_type": task_type,
         "metric": max(results.values()),
         "trained_on": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "features": list(X.columns)
+        "features": list(X.columns),
+        "feature_types": feature_types,
+        "feature_categories": feature_categories
     }
 
     with open(meta_path, "w") as f:
@@ -388,7 +408,7 @@ def train_models(csv_path, target):
         "comparison_plot": comparison_plot,
         "cm_plot": cm_plot,
         "feature_importance_plot": feature_importance_plot,
-        "model_path": model_path,
+        # the download link should always point to the current model
+        "model_path": "models/best_model.pkl",
         "model_meta": model_metadata,
-        "model_path": "models/best_model.pkl"
     }

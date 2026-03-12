@@ -50,6 +50,14 @@ def train(request):
         # Run AutoML
         output = train_models(csv_path, target)
 
+        # training finished; remove csv_path from session so the next train
+        # requires a fresh upload.  This prevents accidentally re‑training on
+        # the previous file when the user forgets to upload a new one.
+        try:
+            del request.session["csv_path"]
+        except KeyError:
+            pass
+
         return render(
             request,
             "trainer/results.html",
@@ -61,9 +69,9 @@ def train(request):
                 "cm_plot": output["cm_plot"],
                 "model_meta": output["model_meta"],
                 "model_path": output["model_path"],
-                "fi_plot": output["feature_importance_plot"]
-                
-,
+                "fi_plot": output["feature_importance_plot"],
+                # expose features so template can show them directly
+                "trained_features": output["model_meta"].get("features", []),
             }
         )
 
@@ -75,7 +83,46 @@ from django.core.files.storage import FileSystemStorage
 import pandas as pd
 
 def predict_page(request):
-    return render(request, "trainer/predict.html")
+    # Attempt to load metadata so we can inform the user which columns are
+    # expected by the current model.  If the metadata file is missing, we'll
+    # just render the form without details.
+    required_cols = []
+    feature_types = {}
+    feature_categories = {}
+    inputs = []  # list of dicts {col, type, categories}
+
+    meta_path = os.path.join(settings.MEDIA_ROOT, "models", "best_model_meta.json")
+    if os.path.exists(meta_path):
+        try:
+            import json
+            with open(meta_path, "r") as f:
+                meta = json.load(f)
+            required_cols = meta.get("features", [])
+            feature_types = meta.get("feature_types", {})
+            feature_categories = meta.get("feature_categories", {})
+        except Exception:
+            required_cols = []
+            feature_types = {}
+            feature_categories = {}
+
+    # build simple input spec list so the template stays clean
+    for col in required_cols:
+        dtype = feature_types.get(col, "").lower()
+        if col in feature_categories and feature_categories[col]:
+            # if we have category list, prefer a select element
+            inputs.append({
+                "col": col,
+                "type": "select",
+                "categories": feature_categories[col]
+            })
+        else:
+            if "int" in dtype or "float" in dtype:
+                typ = "number"
+            else:
+                typ = "text"
+            inputs.append({"col": col, "type": typ, "categories": None})
+
+    return render(request, "trainer/predict.html", {"required_cols": required_cols, "feature_types": feature_types, "inputs": inputs})
 
 def predict_result(request):
     if request.method == "POST":
@@ -99,16 +146,68 @@ def predict_result(request):
         with open(model_path, "rb") as f:
             model = pickle.load(f)
 
-        # Save uploaded CSV
-        csv_file = request.FILES.get("csv_file")
-        fs = FileSystemStorage(location="media/uploads/")
-        filename = fs.save(csv_file.name, csv_file)
-        file_path = fs.path(filename)
+        # determine whether the user supplied a file or manual values
+        if "manual" in request.POST:
+            # build data frame from POST values using feature list
+            # (dtype conversion can be delegated to pandas/sklearn pipeline)
+            data = {}
+            meta_path = os.path.join(settings.MEDIA_ROOT, "models", "best_model_meta.json")
+            if os.path.exists(meta_path):
+                try:
+                    import json
+                    with open(meta_path, "r") as f:
+                        meta = json.load(f)
+                    required_cols = meta.get("features", [])
+                except Exception:
+                    required_cols = []
+            else:
+                required_cols = []
 
-        df = pd.read_csv(file_path)
+            for col in required_cols:
+                data[col] = request.POST.get(col, "")
+
+            df = pd.DataFrame([data])
+
+            # no need to validate column presence here because we built it
+        else:
+            # Save uploaded CSV
+            csv_file = request.FILES.get("csv_file")
+            fs = FileSystemStorage(location="media/uploads/")
+            filename = fs.save(csv_file.name, csv_file)
+            file_path = fs.path(filename)
+
+            df = pd.read_csv(file_path)
+
+            # --------------------------------------------------
+            # Validate uploaded data against training features
+            # --------------------------------------------------
+            required_cols = None
+            meta_path = os.path.join(settings.MEDIA_ROOT, "models", "best_model_meta.json")
+            if os.path.exists(meta_path):
+                try:
+                    import json
+                    with open(meta_path, "r") as f:
+                        meta = json.load(f)
+                    required_cols = set(meta.get("features", []))
+                except Exception:
+                    required_cols = None
+
+            if required_cols is not None:
+                missing = required_cols - set(df.columns)
+                if missing:
+                    return render(request, "trainer/predict.html", {
+                        "error": (
+                            "Uploaded CSV is missing the following columns "
+                            f"required by the model: {sorted(missing)}"
+                        )
+                    })
 
         # Predict
-        predictions = model.predict(df)
+        try:
+            predictions = model.predict(df)
+        except ValueError as e:
+            return render(request, "trainer/predict.html", {"error": str(e)})
+
         df["Prediction"] = predictions
 
         # Save predictions

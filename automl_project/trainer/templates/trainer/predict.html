@@ -11,12 +11,66 @@
         <h3>🔮 Prediction Page</h3>
         <p class="text-muted">Upload new data (CSV) without target column</p>
 
-        <form method="post" enctype="multipart/form-data" action="{% url 'predict_result' %}">
+        {% if required_cols %}
+            <div class="alert alert-info">
+                <strong>Model expects the following columns:</strong><br>
+                <code>{{ required_cols|join:", " }}</code>
+            </div>
+        {% else %}
+            <div class="alert alert-warning">
+                No trained model detected. Please train a model before predicting.
+            </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" action="{% url 'predict_result' %}" id="upload-form" {% if feature_types %}style="display: none;"{% endif %}>
             {% csrf_token %}
             <input type="file" name="csv_file" class="form-control" required>
             <br>
             <button class="btn btn-success">Generate Predictions</button>
         </form>
+
+        <form method="post" action="{% url 'predict_result' %}" id="manual-form" {% if not inputs %}style="display: none;"{% endif %}>
+            {% csrf_token %}
+            <input type="hidden" name="manual" value="1">
+            <div class="row">
+            {% for item in inputs %}
+                <div class="col-md-6 mb-3">
+                    <label for="id_{{ item.col }}" class="form-label">{{ item.col }}</label>
+                    {% if item.type == "select" %}
+                        <select name="{{ item.col }}" id="id_{{ item.col }}" class="form-select" required>
+                            <option value="" disabled selected>Choose...</option>
+                            {% for choice in item.categories %}
+                                <option value="{{ choice }}">{{ choice }}</option>
+                            {% endfor %}
+                        </select>
+                    {% else %}
+                        <input type="{{ item.type }}" {% if item.type == "number" %}step="any"{% endif %} name="{{ item.col }}" id="id_{{ item.col }}" class="form-control" required>
+                    {% endif %}
+                </div>
+            {% endfor %}
+            </div>
+            <button class="btn btn-primary">Predict from values</button>
+        </form>
+
+        {% if required_cols %}
+            <div class="mt-3">
+                <button id="show-upload" class="btn btn-outline-secondary btn-sm me-2">Upload CSV</button>
+                <button id="show-manual" class="btn btn-outline-secondary btn-sm">Enter values manually</button>
+            </div>
+        {% endif %}
+
+        <script>
+            document.getElementById('show-upload').addEventListener('click', function(e) {
+                e.preventDefault();
+                document.getElementById('upload-form').style.display = '';
+                document.getElementById('manual-form').style.display = 'none';
+            });
+            document.getElementById('show-manual').addEventListener('click', function(e) {
+                e.preventDefault();
+                document.getElementById('upload-form').style.display = 'none';
+                document.getElementById('manual-form').style.display = '';
+            });
+        </script>
     </div>
 </div>
 

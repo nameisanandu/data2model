@@ -53,6 +53,13 @@
         <li><strong>Score:</strong> {{ model_meta.metric }}</li>
         <li><strong>Trained on:</strong> {{ model_meta.trained_on }}</li>
     </ul>
+
+    {% if trained_features %}
+    <div class="mt-2">
+        <strong>Features used for training:</strong><br>
+        <code>{{ trained_features|join:", " }}</code>
+    </div>
+    {% endif %}
 </div>
 
 
