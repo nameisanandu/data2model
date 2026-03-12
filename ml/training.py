@@ -1,24 +1,13 @@
-# ================================
-# ML Utilities for AutoML Web App
-# ================================
-
 import os
 import pickle
 import pandas as pd
 import json
 from datetime import datetime
 
-
-# ---- Matplotlib (NON-GUI backend for Django) ----
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-
-# ---- Scikit-learn imports ----
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import StandardScaler, OneHotEncoder,OrdinalEncoder
+from sklearn.preprocessing import StandardScaler, OneHotEncoder, OrdinalEncoder
 from sklearn.metrics import accuracy_score, r2_score, confusion_matrix
 
 from sklearn.linear_model import LogisticRegression, LinearRegression
@@ -29,106 +18,40 @@ from sklearn.svm import SVC
 
 from sklearn.impute import SimpleImputer
 
+from ml.preprocessing import analyze_categorical_columns, decide_encoding
+from ml import evaluation
 
 
-# ================================
-# Auto-detect encoding per column
-# ================================
-
-def analyze_categorical_columns(X):
-    """
-    Returns dict: {column_name: unique_count}
-    """
-    cat_info = {}
-    for col in X.select_dtypes(include="object").columns:
-        cat_info[col] = X[col].nunique()
-    return cat_info
-
-
-def decide_encoding(cat_info):
-    """
-    Decide encoding strategy based on cardinality
-    """
-    onehot_cols = []
-    label_cols = []
-    drop_cols = []
-
-    for col, unique_count in cat_info.items():
-        if unique_count <= 2:
-            label_cols.append(col)
-        elif unique_count <= 10:
-            onehot_cols.append(col)
-        elif unique_count <= 50:
-            onehot_cols.append(col)   # safe default
-        else:
-            drop_cols.append(col)     # high-cardinality noise
-
-    return onehot_cols, label_cols, drop_cols
-
-
-
-
-
-
-
-
-# ==========================================
-# MAIN TRAINING FUNCTION
-# ==========================================
 def train_models(csv_path, target):
-
-    # --------------------
-    # Load dataset
-    # --------------------
+    # load dataset
     df = pd.read_csv(csv_path)
     df = df.dropna()
-
     X = df.drop(columns=[target])
     y = df[target]
 
-    # --------------------
-    # Task detection
-    # --------------------
-    if y.nunique() <= 10:
-        task_type = "classification"
-    else:
-        task_type = "regression"
+    # task detection
+    task_type = "classification" if y.nunique() <= 10 else "regression"
 
-  
-
-
-    # ----------------------------------
-    # Auto-detect encoding strategy
-    # ----------------------------------
+    # encoding strategy
     cat_info = analyze_categorical_columns(X)
     onehot_cols, label_cols, drop_cols = decide_encoding(cat_info)
-
-    # Drop high-cardinality columns
     X = X.drop(columns=drop_cols)
-
     num_cols = X.select_dtypes(exclude="object").columns
 
-    # ----------------------------------
-    # Transformers
-    # ----------------------------------
+    # transformers
     numeric_transformer = Pipeline([
         ("imputer", SimpleImputer(strategy="mean")),
         ("scaler", StandardScaler())
     ])
-
     onehot_transformer = Pipeline([
         ("imputer", SimpleImputer(strategy="most_frequent")),
         ("onehot", OneHotEncoder(handle_unknown="ignore"))
     ])
-
     label_transformer = Pipeline([
         ("imputer", SimpleImputer(strategy="most_frequent")),
         ("ordinal", OrdinalEncoder())
     ])
 
-    # ----------------------------------
-    # ColumnTransformer (AutoML-style)
-    # ----------------------------------
     preprocessor = ColumnTransformer(
         transformers=[
             ("num", numeric_transformer, num_cols),
@@ -138,20 +61,12 @@ def train_models(csv_path, target):
         remainder="drop"
     )
 
-
-
-
-
-    # --------------------
-    # Train-test split
-    # --------------------
+    # split
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42
     )
 
-    # --------------------
-    # Model dictionaries
-    # --------------------
+    # model dictionaries
     modelClassifier = {
         "Logistic Regression": Pipeline([
             ("preprocessor", preprocessor),
@@ -174,7 +89,6 @@ def train_models(csv_path, target):
             ("model", SVC())
         ])
     }
-
     modelRegressor = {
         "Linear Regression": Pipeline([
             ("preprocessor", preprocessor),
@@ -193,154 +107,66 @@ def train_models(csv_path, target):
     results = {}
     trained_models = {}
 
-    # --------------------
-    # Train models
-    # --------------------
     if task_type == "classification":
         for name, model in modelClassifier.items():
             model.fit(X_train, y_train)
             preds = model.predict(X_test)
-            score = accuracy_score(y_test, preds)
-            results[name] = round(score, 4)
+            results[name] = round(accuracy_score(y_test, preds), 4)
             trained_models[name] = model
-
     else:
         for name, model in modelRegressor.items():
             model.fit(X_train, y_train)
             preds = model.predict(X_test)
-            score = r2_score(y_test, preds)
-            results[name] = round(score, 4)
+            results[name] = round(r2_score(y_test, preds), 4)
             trained_models[name] = model
 
-    # --------------------
-    # Create static folders
-    # --------------------
+    # ensure directories
     os.makedirs("static/plots", exist_ok=True)
     os.makedirs("media/models", exist_ok=True)
 
-    # --------------------
-    # Model comparison plot
-    # --------------------
-    plt.figure()
-    plt.bar(results.keys(), results.values())
-    plt.title(f"{task_type.upper()} Model Comparison")
-    plt.ylabel("Accuracy" if task_type == "classification" else "R2 Score")
-    plt.xticks(rotation=30)
-    plt.tight_layout()
+    comparison_plot = evaluation.plot_model_comparison(results, task_type, "static")
+    cm_plot = None
 
-    comparison_plot = "plots/model_comparison.png"
-    plt.savefig(f"static/{comparison_plot}")
-    plt.close()
-
-    # --------------------
-    # Select best model
-    # --------------------
     best_model_name = max(results, key=results.get)
     best_model = trained_models[best_model_name]
 
-    # --------------------
-    # Confusion Matrix (Classification only)
-    # --------------------
-    cm_plot = None
     if task_type == "classification":
         preds = best_model.predict(X_test)
         cm = confusion_matrix(y_test, preds)
+        cm_plot = evaluation.plot_confusion(cm, "static")
 
-        plt.figure()
-        plt.imshow(cm)
-        plt.title("Confusion Matrix")
-        plt.colorbar()
-        plt.xlabel("Predicted")
-        plt.ylabel("Actual")
-
-        cm_plot = "plots/confusion_matrix.png"
-        plt.savefig(f"static/{cm_plot}")
-        plt.close()
-
+    # feature importances
     feature_importance_plot = None
-
     final_model = best_model.named_steps["model"]
-
     if hasattr(final_model, "feature_importances_"):
-
         importances = final_model.feature_importances_
-        preprocessor = best_model.named_steps["preprocessor"]
+        preprocessor_instance = best_model.named_steps["preprocessor"]
 
         feature_importance_map = {}
-        feature_idx = 0  # pointer over transformed features
-
-        # --------------------
-        # Numeric features
-        # --------------------
+        feature_idx = 0
         for col in num_cols:
             feature_importance_map[col] = importances[feature_idx]
             feature_idx += 1
-
-        # --------------------
-        # One-Hot Encoded features
-        # --------------------
-        if "onehot" in preprocessor.named_transformers_:
-            ohe = preprocessor.named_transformers_["onehot"]
-
+        if "onehot" in preprocessor_instance.named_transformers_:
+            ohe = preprocessor_instance.named_transformers_["onehot"]
             if ohe != "drop" and len(onehot_cols) > 0:
                 ohe_feature_names = ohe.get_feature_names_out(onehot_cols)
-
                 for fname in ohe_feature_names:
                     original_col = fname.split("_")[0]
                     feature_importance_map.setdefault(original_col, 0.0)
                     feature_importance_map[original_col] += importances[feature_idx]
                     feature_idx += 1
-
-        # --------------------
-        # Ordinal / Label Encoded features
-        # --------------------
-        if "label" in preprocessor.named_transformers_:
+        if "label" in preprocessor_instance.named_transformers_:
             if len(label_cols) > 0:
                 for col in label_cols:
                     feature_importance_map[col] = importances[feature_idx]
                     feature_idx += 1
-
-        # --------------------
-        # Convert to DataFrame
-        # --------------------
-        fi_df = pd.DataFrame(
-            feature_importance_map.items(),
-            columns=["Feature", "Importance"]
+        feature_importance_plot = evaluation.plot_feature_importances(
+            feature_importance_map, "static"
         )
 
-        # --------------------
-        # Top N columns only
-        # --------------------
-        TOP_N = 10
-        fi_df = fi_df.sort_values(by="Importance", ascending=False).head(TOP_N)
-
-        # --------------------
-        # Plot
-        # --------------------
-        plt.figure(figsize=(6, 4))
-        plt.barh(fi_df["Feature"], fi_df["Importance"])
-        plt.xlabel("Importance")
-        plt.title("Top Feature Importances (Column Level)")
-        plt.gca().invert_yaxis()
-        plt.tight_layout()
-
-        feature_importance_plot = "plots/feature_importance.png"
-        plt.savefig(f"static/{feature_importance_plot}")
-        plt.close()
-
-    # --------------------
-    # Save trained model
-    # --------------------
-
-
-# --------------------
-# Model Versioning
-# --------------------
-    os.makedirs("media/models", exist_ok=True)
-
+    # versioning
     meta_path = "media/models/best_model_meta.json"
-
-    # Load previous version
     if os.path.exists(meta_path):
         with open(meta_path, "r") as f:
             meta = json.load(f)
@@ -348,32 +174,19 @@ def train_models(csv_path, target):
     else:
         version = 1
 
-    model_filename = f"best_model_v{version}.pkl"
-    model_path = f"models/{model_filename}"
-    full_model_path = os.path.join("media", model_path)
-
-    with open(full_model_path, "wb") as f:
+    versioned_path = f"models/best_model_v{version}.pkl"
+    versioned_full = os.path.join("media", versioned_path)
+    with open(versioned_full, "wb") as f:
+        pickle.dump(best_model, f)
+    unversioned_full = os.path.join("media", "models", "best_model.pkl")
+    with open(unversioned_full, "wb") as f:
         pickle.dump(best_model, f)
 
-    # write unversioned "current" copy used by prediction endpoint
-    unversioned_path = os.path.join("media", "models", "best_model.pkl")
-    with open(unversioned_path, "wb") as f:
-        pickle.dump(best_model, f)
-
-
-
-
-# Save model metadata
-# --------------------
-    # capture feature types so the prediction form can render appropriate
-    # input fields later.  We convert dtype objects to strings for
-    # serialization.  Also record the set of unique values for categorical
-    # (object) columns so the manual entry form can render dropdowns.
+    # metadata
     feature_types = {col: str(X[col].dtype) for col in X.columns}
     feature_categories = {}
     for col in X.columns:
         if X[col].dtype == "object":
-            # Convert to list so JSON serializable; sort for deterministic order
             feature_categories[col] = sorted(
                 pd.Series(X[col].dropna().unique()).astype(str).tolist()
             )
@@ -388,18 +201,8 @@ def train_models(csv_path, target):
         "feature_types": feature_types,
         "feature_categories": feature_categories
     }
-
     with open(meta_path, "w") as f:
         json.dump(model_metadata, f, indent=4)
-
-
-    # --------------------
-    # Return results
-    # --------------------
-
-
-
-
 
     return {
         "task_type": task_type,
@@ -408,7 +211,6 @@ def train_models(csv_path, target):
         "comparison_plot": comparison_plot,
         "cm_plot": cm_plot,
         "feature_importance_plot": feature_importance_plot,
-        # the download link should always point to the current model
         "model_path": "models/best_model.pkl",
         "model_meta": model_metadata,
     }

@@ -40,15 +40,21 @@ The system automates data preprocessing, model training, evaluation, interpretab
 
 data2model/
 
-│── automl\_project/
-
-│── venv/ (ignored)
-
-│── requirements.txt
-
-│── README.md
-
-│── .gitignore
+├── config/
+├── apps/
+│   └── trainer/
+├── ml/
+├── static/
+│   └── plots/
+├── media/
+├── notebooks/
+├── models/
+├── screenshots/
+├── manage.py
+├── Procfile
+├── requirements.txt
+├── README.md
+└── .gitignore
 
 
 
@@ -108,8 +114,6 @@ venv\Scripts\activate
 
 
 pip install -r requirements.txt
-
-cd automl_project
 
 python manage.py migrate
 

@@ -4,7 +4,8 @@ from django.shortcuts import render
 from django.core.files.storage import FileSystemStorage
 import pandas as pd
 
-from .ml_utils import train_models
+from ml.training import train_models
+from ml.predict import load_model, predict_dataframe, validate_columns
 
 
 
@@ -134,17 +135,13 @@ def predict_result(request):
         from django.core.files.storage import FileSystemStorage
         from django.shortcuts import render
 
-        model_path = os.path.join(settings.MEDIA_ROOT, "models", "best_model.pkl")
-
-        # 🔒 SAFETY CHECK
-        if not os.path.exists(model_path):
+        # attempt to load the current model using helper; will raise if missing
+        try:
+            model = load_model()
+        except FileNotFoundError:
             return render(request, "trainer/predict.html", {
                 "error": "No trained model found. Please train a model first."
             })
-
-        # Load trained model
-        with open(model_path, "rb") as f:
-            model = pickle.load(f)
 
         # determine whether the user supplied a file or manual values
         if "manual" in request.POST:
@@ -203,12 +200,20 @@ def predict_result(request):
                     })
 
         # Predict
+        # validate columns only when user uploaded CSV
+        if "manual" not in request.POST:
+            missing = validate_columns(df)
+            if missing:
+                return render(request, "trainer/predict.html", {
+                    "error": (
+                        "Uploaded CSV is missing the following columns "
+                        f"required by the model: {missing}"
+                    )
+                })
         try:
-            predictions = model.predict(df)
+            df = predict_dataframe(model, df)
         except ValueError as e:
             return render(request, "trainer/predict.html", {"error": str(e)})
-
-        df["Prediction"] = predictions
 
         # Save predictions
         os.makedirs("media/predictions", exist_ok=True)

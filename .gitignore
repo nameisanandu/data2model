@@ -17,3 +17,9 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# AutoML project ignores
+data/
+models/*.pkl
+static/plots/*
+.ipynb_checkpoints/
