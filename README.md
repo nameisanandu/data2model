@@ -36,27 +36,24 @@ The system automates data preprocessing, model training, evaluation, interpretab
 
 
 
-
-
-data2model/
-
-├── config/
-├── apps/
-│   └── trainer/
-├── ml/
-├── static/
-│   └── plots/
-├── media/
-├── notebooks/
-├── models/
-├── screenshots/
-├── manage.py
-├── Procfile
-├── requirements.txt
-├── README.md
-└── .gitignore
-
-
+    
+    data2model/
+    
+    ├── config/
+    ├── apps/
+    │   └── trainer/
+    ├── ml/
+    ├── static/
+    │   └── plots/
+    ├── media/
+    ├── notebooks/
+    ├── models/
+    ├── screenshots/
+    ├── manage.py
+    ├── Procfile
+    ├── requirements.txt
+    ├── README.md
+    └── .gitignore
 
 
 
